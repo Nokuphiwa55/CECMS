@@ -942,4 +942,21 @@ security.initialize_authentication(DATABASE)
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=int(os.environ.get("PORT", "5000")), debug=False)
+    host = os.environ.get("CECMS_HOST", "127.0.0.1")
+    port = int(os.environ.get("PORT", "5000"))
+    production = os.environ.get("CECMS_ENV", "local").casefold() == "production"
+    local_hosts = {"127.0.0.1", "localhost", "::1"}
+
+    if host not in local_hosts and not production:
+        raise RuntimeError("Non-local CECMS_HOST requires CECMS_ENV=production.")
+    if production and (
+        not os.environ.get("CECMS_SECRET_KEY")
+        or os.environ.get("CECMS_COOKIE_SECURE") != "1"
+    ):
+        raise RuntimeError(
+            "Production requires a persistent CECMS_SECRET_KEY and CECMS_COOKIE_SECURE=1."
+        )
+
+    from waitress import serve
+
+    serve(app, host=host, port=port)

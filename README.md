@@ -21,7 +21,7 @@ CECMS is a browser-based cybercrime early-warning and case-management system. It
 
 On first launch, create the Administrator account and enroll an authenticator app using the setup key shown on screen. For an existing CECMS database, sign in with an existing account; accounts without MFA are prompted to enroll.
 
-The application listens on the local computer only by default. Do not expose it to a network without configuring HTTPS, a persistent `CECMS_SECRET_KEY`, setting `CECMS_COOKIE_SECURE=1`, and using an appropriately secured deployment environment.
+The application uses Waitress and listens on the local computer only by default. For a team deployment, run it on an organization-managed host behind an HTTPS reverse proxy. Set `CECMS_ENV=production`, provide a persistent `CECMS_SECRET_KEY` from the host's secret manager, and set `CECMS_COOKIE_SECURE=1`. Keep Waitress bound to `127.0.0.1` when the HTTPS reverse proxy runs on the same host. A non-local `CECMS_HOST` is rejected unless production mode and these security settings are enabled. Never expose the application over plain HTTP or commit production secrets to Git.
 
 ### Recover Administrator authenticator access
 
