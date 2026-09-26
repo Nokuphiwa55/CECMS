@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10251e">
+  <title>{% block title %}CECMS{% endblock %} · CECMS</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body class="app-shell">
+  <aside class="sidebar">
+    <a class="brand" href="{{ url_for('dashboard') }}">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32"><path d="M16 2.8 27 7v8.1c0 7-4.7 11.9-11 14.2C9.7 27 5 22.1 5 15.1V7l11-4.2Z"/><path d="m11.5 15.8 3 3 6.3-6.5"/></svg>
+      </span>
+      <span><strong>CECMS</strong><small>Cybercrime early warning</small></span>
+    </a>
+    <div class="nav-caption">WORKSPACE</div>
+    <nav class="side-nav" aria-label="Main navigation">
+      <a class="{{ 'active' if request.endpoint == 'dashboard' else '' }}" href="{{ url_for('dashboard') }}"><span class="nav-icon">⌂</span> Overview</a>
+      <a class="{{ 'active' if request.endpoint == 'reports' or request.endpoint == 'report_detail' else '' }}" href="{{ url_for('reports') }}"><span class="nav-icon">▤</span> Reports <span class="nav-count">›</span></a>
+      <a class="{{ 'active' if request.endpoint == 'new_report' else '' }}" href="{{ url_for('new_report') }}"><span class="nav-icon">＋</span> Submit a report</a>
+      <a class="{{ 'active' if request.endpoint == 'alerts' else '' }}" href="{{ url_for('alerts') }}"><span class="nav-icon">◉</span> Early-warning alerts</a>
+      {% if is_admin %}
+      <div class="nav-caption nav-caption-spaced">ADMINISTRATION</div>
+      <a class="{{ 'active' if request.endpoint == 'staff_accounts' else '' }}" href="{{ url_for('staff_accounts') }}"><span class="nav-icon">＋</span> Staff accounts</a>
+      <a class="{{ 'active' if request.endpoint == 'admin_security' else '' }}" href="{{ url_for('admin_security') }}"><span class="nav-icon">⌑</span> Security center</a>
+      <a class="{{ 'active' if request.endpoint == 'audit_log' else '' }}" href="{{ url_for('audit_log') }}"><span class="nav-icon">◷</span> Audit trail</a>
+      {% endif %}
+      <div class="nav-caption nav-caption-spaced">RESOURCES</div>
+      <a class="{{ 'active' if request.endpoint == 'privacy' else '' }}" href="{{ url_for('privacy') }}"><span class="nav-icon">◇</span> Privacy &amp; access</a>
+    </nav>
+    <div class="sidebar-note">
+      <span class="note-icon">i</span>
+      <p>Indicators support investigation. They are not proof of wrongdoing.</p>
+      <a href="{{ url_for('privacy') }}">Our principles <span>↗</span></a>
+    </div>
+    <div class="sidebar-footer"><span class="online-dot"></span> Secure workspace <span class="version">CECMS</span></div>
+  </aside>
+
+  <div class="main-column">
+    <header class="topbar">
+      <div class="mobile-brand"><span class="brand-mark small"><svg viewBox="0 0 32 32"><path d="M16 2.8 27 7v8.1c0 7-4.7 11.9-11 14.2C9.7 27 5 22.1 5 15.1V7l11-4.2Z"/><path d="m11.5 15.8 3 3 6.3-6.5"/></svg></span> CECMS</div>
+      <div class="breadcrumb"><span>Workspace</span><span class="crumb-separator">/</span><strong>{% block breadcrumb %}Overview{% endblock %}</strong></div>
+      <div class="topbar-right">
+        <span class="secure-label"><span class="online-dot"></span> System secure</span>
+        <span class="topbar-divider"></span>
+        <div class="user-chip"><span class="avatar">{{ current_user.username[:1]|upper }}</span><span class="user-chip-text"><strong>{{ current_user.username }}</strong><small>{{ current_user.role }}</small></span></div>
+        <form action="{{ url_for('logout') }}" method="post" class="logout-form"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="icon-button" aria-label="Sign out" title="Sign out">↗</button></form>
+      </div>
+    </header>
+
+    <main class="page">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}<div class="flash-stack">{% for category, message in messages %}<div class="flash flash-{{ category }}"><span>{{ '✓' if category == 'success' else '!' }}</span>{{ message }}<button type="button" class="flash-close" aria-label="Dismiss" onclick="this.parentElement.remove()">×</button></div>{% endfor %}</div>{% endif %}
+      {% endwith %}
+      {% if system_locked %}<div class="flash flash-error"><span>!</span>System access is locked by an Administrator. Case actions are unavailable.</div>{% endif %}
+      {% block content %}{% endblock %}
+    </main>
+    <footer class="page-footer"><span>CECMS · Cybercrime Early-Warning Management System</span><span>Responsible intelligence. Human-led decisions.</span></footer>
+  </div>
+</body>
+</html>

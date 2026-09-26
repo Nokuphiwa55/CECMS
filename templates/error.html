@@ -1,0 +1,6 @@
+{% extends "layout.html" %}
+{% block title %}{{ code }} · Request unavailable{% endblock %}
+{% block breadcrumb %}Request unavailable{% endblock %}
+{% block content %}
+  <section class="panel error-card"><span class="error-code">{{ code }}</span><h1>We can’t open that page.</h1><p>{{ message }}</p><a class="button button-primary" href="{{ url_for('dashboard') }}">Return to overview <span>→</span></a></section>
+{% endblock %}

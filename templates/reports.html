@@ -1,0 +1,23 @@
+{% extends "layout.html" %}
+{% block title %}Reports{% endblock %}
+{% block breadcrumb %}Reports{% endblock %}
+{% block content %}
+  <div class="page-heading">
+    <div><span class="eyebrow">CASE MANAGEMENT</span><h1>Reports</h1><p>Review submissions and follow their investigation status.</p></div>
+    <a class="button button-primary" href="{{ url_for('new_report') }}"><span class="button-plus">＋</span> Submit a report</a>
+  </div>
+  <section class="panel reports-panel">
+    <form class="filter-bar" method="get" action="{{ url_for('reports') }}">
+      <label class="search-field"><span aria-hidden="true">⌕</span><input type="search" name="q" value="{{ search }}" placeholder="Search location, product or category" aria-label="Search reports"></label>
+      <label class="filter-select"><span>Risk level</span><select name="risk" onchange="this.form.submit()"><option value="">All risks</option><option value="HIGH" {{ 'selected' if risk == 'HIGH' else '' }}>High</option><option value="MEDIUM" {{ 'selected' if risk == 'MEDIUM' else '' }}>Medium</option><option value="LOW" {{ 'selected' if risk == 'LOW' else '' }}>Low</option></select></label>
+      <button class="button button-secondary filter-submit" type="submit">Search</button>
+    </form>
+    {% if reports %}
+    <div class="table-wrap"><table class="data-table report-list-table"><thead><tr><th>REPORT</th><th>INCIDENT CATEGORY</th><th>LOCATION</th>{% if is_reviewer %}<th>LOSS</th>{% endif %}<th>RISK</th><th>STATUS</th><th></th></tr></thead><tbody>
+    {% for report in reports %}<tr><td><a class="report-id" href="{{ url_for('report_detail', report_id=report.id) }}">#{{ '%04d'|format(report.id) }}</a><small class="cell-sub">{{ report.created_at|date_short }}</small></td><td><strong>{{ report.scam_type or 'Unclassified' }}</strong></td><td>{{ report.platform }}</td>{% if is_reviewer %}<td>{{ report.amount_lost|money }}</td>{% endif %}<td><span class="risk-badge risk-badge-{{ (report.risk_level or 'low')|lower }}">{{ report.risk_level or 'LOW' }}</span></td><td><span class="status-badge">{{ report.status }}</span></td><td><a class="row-arrow" href="{{ url_for('report_detail', report_id=report.id) }}" aria-label="Open report">→</a></td></tr>{% endfor %}
+    </tbody></table></div>
+    <div class="table-footer"><span>Showing {{ (page - 1) * 20 + 1 }}–{{ [page * 20, total]|min }} of {{ total }} reports</span><div class="pagination">{% if page > 1 %}<a href="{{ url_for('reports', page=page - 1, risk=risk, q=search) }}">← Previous</a>{% endif %}<span>Page {{ page }} of {{ page_count }}</span>{% if page < page_count %}<a href="{{ url_for('reports', page=page + 1, risk=risk, q=search) }}">Next →</a>{% endif %}</div></div>
+    {% else %}<div class="empty-state"><span class="empty-icon">⌕</span><strong>{{ 'No matching reports' if search or risk else 'No reports yet' }}</strong><p>{{ 'Try another search or clear your filters.' if search or risk else 'Submitted reports will be listed here.' }}</p>{% if not search and not risk %}<a class="button button-secondary" href="{{ url_for('new_report') }}">Submit a report</a>{% endif %}</div>{% endif %}
+  </section>
+  <p class="page-disclaimer">Automated risk levels and incident categories are indicators only and do not establish guilt.</p>
+{% endblock %}

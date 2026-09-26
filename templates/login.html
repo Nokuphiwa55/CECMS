@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10251e">
+  <title>Sign in · CECMS</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body class="auth-page">
+  <main class="auth-layout">
+    <section class="auth-story">
+      <a class="brand auth-brand" href="{{ url_for('login') }}"><span class="brand-mark"><svg viewBox="0 0 32 32"><path d="M16 2.8 27 7v8.1c0 7-4.7 11.9-11 14.2C9.7 27 5 22.1 5 15.1V7l11-4.2Z"/><path d="m11.5 15.8 3 3 6.3-6.5"/></svg></span><span><strong>CECMS</strong><small>Cybercrime early warning</small></span></a>
+      <div class="story-content">
+        <span class="eyebrow light-eyebrow"><span class="online-dot"></span> SECURE INVESTIGATION WORKSPACE</span>
+        <h1>Turn scattered signals into <em>safer outcomes.</em></h1>
+        <p>A trusted workspace for documenting cybercrime reports, connecting indicators, and supporting careful, human-led investigations.</p>
+        <div class="story-points"><div><span>01</span><p><strong>Report with confidence</strong><br>Document incidents in one secure place.</p></div><div><span>02</span><p><strong>Connect the signals</strong><br>Surface patterns for authorized review.</p></div><div><span>03</span><p><strong>Keep people in control</strong><br>Every lead is verified by an investigator.</p></div></div>
+      </div>
+      <div class="story-footer"><span>PRIVATE BY DESIGN</span><span>BUILT FOR RESPONSIBLE RESPONSE</span></div>
+    </section>
+    <section class="auth-panel">
+      <div class="auth-card">
+        <div class="auth-heading"><span class="eyebrow">WELCOME BACK</span><h2>Sign in to your workspace</h2><p>Use your account credentials to continue securely.</p></div>
+        {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}<div class="flash-stack">{% for category, message in messages %}<div class="flash flash-{{ category }}"><span>{{ '✓' if category == 'success' else '!' }}</span>{{ message }}</div>{% endfor %}</div>{% endif %}{% endwith %}
+        {% if enrollment_secret %}
+          <div class="enrollment-panel">
+            <strong>Set up your authenticator first</strong>
+            <ol class="auth-setup-steps">
+              <li>In your authenticator app, choose <b>Add account</b> and <b>Enter setup key</b>.</li>
+              <li>Enter the setup key below. Choose a <b>time-based</b> code if asked.</li>
+              <li>Enter the app's current <b>six-digit code</b> in the form. Do not enter the setup key there.</li>
+            </ol>
+            <code class="secret-key">{{ enrollment_secret }}</code>
+            <p class="auth-setup-warning">Keep this setup key private. Wait for a fresh six-digit code in your app before submitting.</p>
+          </div>
+        {% elif mfa_challenge_required %}
+          <div class="enrollment-panel"><strong>Enter your authenticator code</strong><p>Enter the current six-digit code from your CECMS entry in the authenticator app. It changes every 30 seconds.</p></div>
+        {% endif %}
+        <form method="post" action="{{ url_for('login') }}" class="auth-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <label for="username">Username</label>
+          <input id="username" name="username" type="text" value="{{ username or '' }}" autocomplete="username" required autofocus>
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required>
+          <label for="verification_code">Authenticator code <span class="optional-label">6 digits</span></label>
+          <input id="verification_code" name="verification_code" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" placeholder="{{ 'Enter the current code from your app' if enrollment_secret or mfa_challenge_required else 'Leave blank only when first setting up MFA' }}">
+          <button class="button button-primary button-full" type="submit">Continue securely <span>→</span></button>
+        </form>
+        <p class="auth-footnote"><span class="lock-mark">⌑</span> Your session is protected with multi-factor authentication.</p>
+      </div>
+      <div class="auth-legal">Access is monitored and recorded for security purposes. <a href="{{ url_for('privacy') }}">Privacy &amp; access</a></div>
+    </section>
+  </main>
+</body>
+</html>

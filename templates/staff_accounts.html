@@ -1,0 +1,26 @@
+{% extends "layout.html" %}
+{% block title %}Staff accounts{% endblock %}
+{% block breadcrumb %}Staff accounts{% endblock %}
+{% block content %}
+  <div class="page-heading"><div><span class="eyebrow">ADMINISTRATION</span><h1>Staff accounts</h1><p>Create and manage authorized CECMS workspace access.</p></div><span class="admin-indicator"><span class="online-dot"></span> Administrator only</span></div>
+  <div class="admin-grid">
+    <section class="panel admin-form-panel">
+      <div class="panel-heading"><div><h2>Create a staff account</h2><p>New staff must enroll multi-factor authentication before access.</p></div></div>
+      <form method="post" class="staff-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="enrollment-panel"><strong>1. Set up an authenticator app</strong><p>Add this CECMS account using the authenticator key below.</p><code class="secret-key">{{ authenticator_secret }}</code><a class="text-link" href="{{ provisioning_uri }}">Open authenticator app ↗</a></div>
+        <label class="field"><span>Username</span><input name="username" value="{{ form.get('username', '') }}" minlength="3" maxlength="48" autocomplete="off" required></label>
+        <label class="field"><span>Role</span><select name="role" required><option value="">Choose a role</option><option value="Investigator" {{ 'selected' if form.get('role') == 'Investigator' else '' }}>Investigator · review full reports and alerts</option><option value="Authorized user" {{ 'selected' if form.get('role') == 'Authorized user' else '' }}>Authorized user · submit and view own reports</option></select></label>
+        <label class="field"><span>Password <small>At least 12 characters</small></span><input name="password" type="password" minlength="12" autocomplete="new-password" required></label>
+        <label class="field"><span>Confirm password</span><input name="password_confirmation" type="password" minlength="12" autocomplete="new-password" required></label>
+        <label class="field"><span>2. Current authenticator code</span><input name="verification_code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="6-digit code" required></label>
+        <button class="button button-primary button-full" type="submit">Create staff account <span>→</span></button>
+      </form>
+    </section>
+    <section class="panel accounts-panel">
+      <div class="panel-heading"><div><h2>Workspace accounts</h2><p>{{ accounts|length }} account{{ '' if accounts|length == 1 else 's' }} registered</p></div></div>
+      {% if accounts %}<div class="accounts-list">{% for account in accounts %}<div class="account-row"><span class="avatar">{{ account.username[:1]|upper }}</span><div class="account-name"><strong>{{ account.username }}</strong><small>{{ account.created_at|date_short }}</small></div><span class="role-pill">{{ account.role }}</span><span class="mfa-state {{ 'mfa-active' if account.mfa_enabled else 'mfa-pending' }}">{{ 'MFA active' if account.mfa_enabled else 'MFA setup needed' }}</span></div>{% endfor %}</div>{% else %}<div class="empty-inline">No workspace accounts have been created.</div>{% endif %}
+      <div class="admin-note"><span>i</span><p>Administrator accounts cannot be created here. New staff authenticate with their own password and authenticator app.</p></div>
+    </section>
+  </div>
+{% endblock %}

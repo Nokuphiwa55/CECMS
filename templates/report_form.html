@@ -1,0 +1,32 @@
+{% extends "layout.html" %}
+{% block title %}Submit a report{% endblock %}
+{% block breadcrumb %}Submit a report{% endblock %}
+{% block content %}
+  <div class="page-heading compact-heading"><div><span class="eyebrow">SECURE SUBMISSION</span><h1>Report cybercrime</h1><p>Tell us what happened. Fields marked required help us review your report.</p></div></div>
+  <div class="form-layout">
+    <form method="post" class="panel report-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <section class="form-section"><div class="form-section-heading"><span class="section-number">01</span><div><h2>Incident details</h2><p>Share the key facts about what happened.</p></div></div>
+        <div class="form-grid">
+          <label class="field"><span>Reporter name</span><input name="victim_name" value="{{ form.get('victim_name', '') }}" placeholder="Optional" maxlength="250"></label>
+          <label class="field"><span>Where did it happen? <b>*</b></span><input name="platform" value="{{ form.get('platform', '') }}" placeholder="Website, app, phone, email…" required maxlength="250"></label>
+          <label class="field"><span>Product or service</span><input name="product" value="{{ form.get('product', '') }}" placeholder="e.g. Online order, banking app" maxlength="250"></label>
+          <label class="field"><span>Organization or person involved</span><input name="business_name" value="{{ form.get('business_name', '') }}" placeholder="If known" maxlength="250"></label>
+          <label class="field"><span>Related contact or indicator</span><input name="contact" value="{{ form.get('contact', '') }}" placeholder="Phone, email, account or URL" maxlength="500"><small>Used to identify possible links between reports.</small></label>
+          <label class="field field-full"><span>What happened? <b>*</b></span><textarea name="description" rows="5" placeholder="Describe the messages, calls, requests or activity…" required maxlength="10000">{{ form.get('description', '') }}</textarea><small>Please do not include passwords, PINs or full payment-card details.</small></label>
+          <label class="field field-full"><span>Evidence note or reference</span><textarea name="evidence" rows="3" placeholder="Optional: describe evidence or provide a safe reference. Do not upload credentials.">{{ form.get('evidence', '') }}</textarea></label>
+        </div>
+      </section>
+      <section class="form-section"><div class="form-section-heading"><span class="section-number">02</span><div><h2>Impact and security</h2><p>These details help prioritize review.</p></div></div>
+        <label class="field amount-field"><span>Financial loss (R)</span><input name="amount_lost" type="number" min="0" step="0.01" value="{{ form.get('amount_lost', '0') }}" placeholder="0.00"><small>Enter 0 if there was no financial loss or the amount is unknown.</small></label>
+        <div class="check-grid">
+          <label class="check-card"><input type="checkbox" name="banking_involved" {{ 'checked' if form.get('banking_involved') else '' }}><span><strong>Bank or payment account involved</strong><small>A bank transfer, card or payment service was involved.</small></span></label>
+          <label class="check-card"><input type="checkbox" name="account_compromised" {{ 'checked' if form.get('account_compromised') else '' }}><span><strong>Account accessed or taken over</strong><small>An account may have been accessed without permission.</small></span></label>
+          <label class="check-card"><input type="checkbox" name="personal_info_exposed" {{ 'checked' if form.get('personal_info_exposed') else '' }}><span><strong>Personal information exposed</strong><small>Personal or identity information may be at risk.</small></span></label>
+        </div>
+      </section>
+      <div class="form-actions"><a class="button button-secondary" href="{{ url_for('reports') }}">Cancel</a><button class="button button-primary" type="submit">Submit securely <span>→</span></button></div>
+    </form>
+    <aside class="form-aside"><div class="aside-card"><span class="aside-shield">◇</span><h3>Your information is handled carefully.</h3><p>Personal details are restricted to authorized investigators. Never include passwords, authentication codes, or full card details.</p><a href="{{ url_for('privacy') }}">Read privacy principles ↗</a></div><div class="aside-card soft-aside"><span class="aside-label">WHAT HAPPENS NEXT</span><ol class="steps"><li><span>1</span><p><strong>Securely recorded</strong><br>Your report receives a reference number.</p></li><li><span>2</span><p><strong>Carefully reviewed</strong><br>Authorized staff assess the information.</p></li><li><span>3</span><p><strong>Followed up</strong><br>Relevant leads may be investigated.</p></li></ol></div></aside>
+  </div>
+{% endblock %}

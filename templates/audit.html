@@ -1,0 +1,7 @@
+{% extends "layout.html" %}
+{% block title %}Audit trail{% endblock %}
+{% block breadcrumb %}Audit trail{% endblock %}
+{% block content %}
+  <div class="page-heading"><div><span class="eyebrow">ADMINISTRATION</span><h1>Audit trail</h1><p>Recent security and case-management activity.</p></div><span class="admin-indicator"><span class="online-dot"></span> Administrator only</span></div>
+  <section class="panel reports-panel">{% if events %}<div class="table-wrap"><table class="data-table audit-table"><thead><tr><th>ACTIVITY</th><th>USER</th><th>TIME</th><th>DETAILS</th><th>NETWORK</th></tr></thead><tbody>{% for event in events %}<tr><td><strong>{{ event[1] }}</strong></td><td>{{ event[0] }}</td><td>{{ event[2] }}</td><td class="audit-details">{{ event[5] or '—' }}</td><td>{{ event[3] or '—' }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="empty-state"><span class="empty-icon">◷</span><strong>No audit events yet</strong><p>Security events will appear here.</p></div>{% endif %}</section>
+{% endblock %}

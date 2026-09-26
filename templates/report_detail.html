@@ -1,0 +1,26 @@
+{% extends "layout.html" %}
+{% block title %}Report #{{ '%04d'|format(report.id) }}{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('reports') }}">Reports</a><span class="crumb-separator">/</span> #{{ '%04d'|format(report.id) }}{% endblock %}
+{% block content %}
+  <div class="page-heading detail-heading"><div><span class="eyebrow">REPORT DETAILS · {{ report.created_at|date_short }}</span><h1>Report <span class="muted-heading">#{{ '%04d'|format(report.id) }}</span></h1><p>Review the report information and current case status.</p></div><a class="button button-secondary" href="{{ url_for('reports') }}">← Back to reports</a></div>
+  <div class="detail-layout">
+    <div class="detail-main">
+      <section class="panel detail-card"><div class="detail-title-row"><div><span class="eyebrow">INCIDENT SUMMARY</span><h2>{{ report.scam_type or 'Other or unclassified' }}</h2></div><span class="risk-badge risk-badge-{{ (report.risk_level or 'low')|lower }}">{{ report.risk_level or 'LOW' }} RISK</span></div>
+        <div class="detail-description">{{ report.description }}</div>
+        <div class="detail-fields"><div><span>Incident location</span><strong>{{ report.platform }}</strong></div><div><span>Product or service</span><strong>{{ report.product or 'Not provided' }}</strong></div><div><span>Organization / person</span><strong>{{ report.business_name or 'Not provided' }}</strong></div><div><span>Financial loss</span><strong>{{ report.amount_lost|money if is_reviewer else 'Restricted to investigators' }}</strong></div></div>
+      </section>
+      {% if is_reviewer %}
+      <section class="panel detail-card"><div class="panel-heading"><div><h2>Investigation information</h2><p>Visible to authorized investigators only.</p></div></div><div class="detail-fields"><div><span>Reporter</span><strong>{{ report.victim_name }}</strong></div><div><span>Related contact / indicator</span><strong class="break-value">{{ report.contact or 'Not provided' }}</strong></div><div><span>Banking involved</span><strong>{{ 'Yes' if report.banking_involved else 'No' }}</strong></div><div><span>Account compromised</span><strong>{{ 'Yes' if report.account_compromised else 'No' }}</strong></div><div><span>Personal information exposed</span><strong>{{ 'Yes' if report.personal_info_exposed else 'No' }}</strong></div></div>
+        {% if evidence %}<div class="evidence-list"><h3>Evidence notes</h3>{% for item in evidence %}<div class="evidence-entry"><span>{{ item.evidence_type }}</span><p>{{ item.description }}</p></div>{% endfor %}</div>{% endif %}
+      </section>
+      {% else %}<div class="privacy-strip"><span class="privacy-strip-icon">◇</span><p><strong>Some information is restricted.</strong> Personal and contact details are only visible to authorized investigators.</p></div>{% endif %}
+    </div>
+    <aside class="detail-side">
+      <section class="panel status-card"><span class="eyebrow">CASE STATUS</span><span class="status-large">{{ report.status }}</span><span class="detail-side-caption">Last recorded status</span>
+        {% if is_reviewer %}<form method="post" class="status-form"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><label for="status">Update status</label><select id="status" name="status"><option value="UNDER INVESTIGATION" {{ 'selected' if report.status == 'UNDER INVESTIGATION' else '' }}>Under investigation</option><option value="RESOLVED" {{ 'selected' if report.status == 'RESOLVED' else '' }}>Resolved</option><option value="CLOSED" {{ 'selected' if report.status == 'CLOSED' else '' }}>Closed</option></select><button class="button button-primary button-full" type="submit">Save status</button><small>Repeated-contact alerts must be confirmed before case status changes.</small></form>{% endif %}
+      </section>
+      <section class="panel status-card"><span class="eyebrow">REPORT TIMELINE</span><div class="timeline"><span class="timeline-dot"></span><div><strong>Report received</strong><small>{{ report.created_at }}</small></div></div><div class="timeline"><span class="timeline-dot muted-dot"></span><div><strong>{{ report.status|title }}</strong><small>Current case status</small></div></div></section>
+      <div class="lead-warning"><span>i</span><p><strong>Unverified lead</strong><br>Automated labels and risk indicators are not proof of wrongdoing.</p></div>
+    </aside>
+  </div>
+{% endblock %}
