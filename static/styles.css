@@ -109,6 +109,11 @@ button, a, input, select, textarea { outline-color: #75a68b; }
 .text-link:hover { color: #1e5638; }
 .text-link span { margin-left: 4px; }
 .mini-icon { color: #78a287; font-size: 20px; }
+.dashboard-live-status { display: flex; align-items: center; gap: 7px; margin-top: 8px; color: #62816c; font-size: 9px; }
+.dashboard-live-status .online-dot { width: 6px; height: 6px; }
+.province-breakdown { margin: 18px 15px 15px; padding-top: 15px; border-top: 1px solid #eef1ee; }
+.province-breakdown h3 { margin: 0 0 12px; color: #34443a; font: 700 11px Manrope, sans-serif; }
+[hidden] { display: none !important; }
 .table-wrap { width: 100%; overflow-x: auto; }
 .data-table { width: 100%; border-collapse: collapse; text-align: left; }
 .data-table thead { border-top: 1px solid #f0f2f0; border-bottom: 1px solid #edf0ed; background: #fbfcfb; }
@@ -172,11 +177,20 @@ button, a, input, select, textarea { outline-color: #75a68b; }
 .field { display: flex; min-width: 0; flex-direction: column; gap: 7px; }
 .field > span, .status-form label { color: #56645a; font-size: 10px; font-weight: 600; }
 .field > span b { color: #bb625a; }
-.field input, .field textarea, .status-form select, .auth-form input { width: 100%; border: 1px solid #e3e9e4; border-radius: 5px; outline: 0; color: #344238; background: #fff; font-size: 11px; transition: border-color .15s, box-shadow .15s; }
-.field input, .status-form select, .auth-form input { height: 38px; padding: 0 11px; }
+.field input, .field textarea, .field select, .status-form select, .auth-form input { width: 100%; border: 1px solid #e3e9e4; border-radius: 5px; outline: 0; color: #344238; background: #fff; font-size: 11px; transition: border-color .15s, box-shadow .15s; }
+.field input, .field select, .status-form select, .auth-form input { height: 38px; padding: 0 11px; }
 .field textarea { min-height: 82px; padding: 10px 11px; line-height: 1.55; resize: vertical; }
-.field input:focus, .field textarea:focus, .status-form select:focus, .auth-form input:focus { border-color: #8db69a; box-shadow: 0 0 0 3px rgb(83 140 101 / 9%); }
+.field input:focus, .field textarea:focus, .field select:focus, .status-form select:focus, .auth-form input:focus { border-color: #8db69a; box-shadow: 0 0 0 3px rgb(83 140 101 / 9%); }
+.field select { cursor: pointer; }
 .field input::placeholder, .field textarea::placeholder { color: #aab3ad; }
+.password-input { position: relative; width: 100%; }
+.password-input input { padding-right: 42px !important; }
+.password-toggle { position: absolute; top: 50%; right: 3px; display: grid; width: 34px; height: 32px; place-items: center; padding: 0; transform: translateY(-50%); border: 0; border-radius: 4px; color: #718078; background: transparent; cursor: pointer; }
+.password-toggle:hover { color: #356847; background: #f0f5f1; }
+.password-toggle:focus-visible { outline: 2px solid #8db69a; outline-offset: 1px; }
+.password-toggle svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.password-toggle .eye-slash { opacity: 0; }
+.password-toggle.is-visible .eye-slash { opacity: 1; }
 .field small, .status-form small { color: #98a29b; font-size: 9px; line-height: 1.55; }
 .field-full { grid-column: 1 / -1; }
 .amount-field { max-width: 310px; }
@@ -303,6 +317,7 @@ button, a, input, select, textarea { outline-color: #75a68b; }
 .auth-form input { height: 42px; }
 .auth-form input::placeholder { color: #a8b1ab; }
 .auth-form button { min-height: 42px; margin-top: 15px; }
+.auth-form .password-toggle { min-height: 32px; margin: 0; }
 .auth-form button span { margin-left: auto; font-size: 14px; }
 .optional-label { float: right; color: #a0aaa4; font-size: 9px; font-weight: 400; }
 .auth-footnote { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 23px 0 0; color: #9aa49d; font-size: 9px; }
@@ -338,6 +353,7 @@ button, a, input, select, textarea { outline-color: #75a68b; }
 .admin-form-panel, .accounts-panel, .security-status-panel, .maintenance-panel { min-width: 0; overflow: hidden; }
 .staff-form { display: flex; flex-direction: column; gap: 12px; padding: 0 17px 17px; }
 .staff-form .field { gap: 6px; }
+.staff-form .password-toggle { min-height: 32px; margin: 0; }
 .staff-form .field > span small { float: right; color: #9ca69f; font-size: 8px; font-weight: 400; }
 .staff-form select { height: 38px; padding: 0 9px; border: 1px solid #e3e9e4; border-radius: 5px; color: #48584d; background: white; font-size: 10px; }
 .staff-form .enrollment-panel { margin: 0; }

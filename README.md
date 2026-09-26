@@ -49,6 +49,8 @@ The password is entered without being displayed and must be at least 12 characte
 - Role-aware dashboards and report visibility.
 - Cybercrime report submission, risk indicators, and case status tracking.
 - Repeated-contact early-warning alerts with investigator review.
+- Typed email, phone, and URL indicators, plus evidence-reported IP addresses for investigator review.
 - Administrator tools for staff accounts, access lockout, backups, integrity checks, and the security audit trail.
 
 Automated classifications, risk ratings, and matching indicators are investigative leads, not proof of wrongdoing.
+Indicator matching is limited to reports in this installation's local database; separate CECMS installations do not share data. Reported IP addresses are not verified automatically and are never blocked by CECMS.

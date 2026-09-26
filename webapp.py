@@ -1,4 +1,5 @@
 import os
+import ipaddress
 import math
 import secrets
 import sqlite3
@@ -10,6 +11,7 @@ from flask import (
     Flask,
     abort,
     flash,
+    jsonify,
     redirect,
     render_template,
     request,
@@ -19,7 +21,7 @@ from flask import (
 
 import security
 from app import DATABASE, create_database
-from case_logic import calculate_risk, classify_scam
+from case_logic import calculate_risk, classify_indicator, classify_scam
 
 
 app = Flask(__name__)
@@ -32,6 +34,19 @@ app.config.update(
 
 _setup_secrets = {}
 _staff_setup_secrets = {}
+REPORT_PROVINCES = (
+    "Eastern Cape",
+    "Free State",
+    "Gauteng",
+    "KwaZulu-Natal",
+    "Limpopo",
+    "Mpumalanga",
+    "Northern Cape",
+    "North West",
+    "Western Cape",
+    "Outside South Africa",
+    "Unknown",
+)
 
 
 def connect_database():
@@ -100,6 +115,7 @@ def template_context():
         "is_admin": security.is_administrator(current_user()),
         "system_locked": security.system_lock_status(DATABASE)[0],
         "csrf_token": session["csrf_token"],
+        "report_provinces": REPORT_PROVINCES,
     }
 
 
@@ -319,9 +335,7 @@ def logout():
     return redirect(url_for("login"))
 
 
-@app.route("/dashboard")
-@unlocked_required
-def dashboard():
+def dashboard_data():
     connection = connect_database()
     try:
         total = connection.execute("SELECT COUNT(*) FROM reports").fetchone()[0]
@@ -335,12 +349,19 @@ def dashboard():
             "SELECT COUNT(*) FROM reports WHERE status != 'CLOSED'"
         ).fetchone()[0]
         recent = connection.execute("""
-            SELECT id, platform, product, scam_type, risk_level, status, created_at
+            SELECT id, platform, product, province, scam_type, risk_level, status, created_at
             FROM reports ORDER BY id DESC LIMIT 6
         """).fetchall()
         categories = connection.execute("""
             SELECT scam_type, COUNT(*) AS total FROM reports
             GROUP BY scam_type ORDER BY total DESC LIMIT 5
+        """).fetchall()
+        provinces = connection.execute("""
+            SELECT COALESCE(NULLIF(province, ''), 'Unknown') AS province,
+                COUNT(*) AS total
+            FROM reports
+            GROUP BY COALESCE(NULLIF(province, ''), 'Unknown')
+            ORDER BY total DESC, province
         """).fetchall()
         loss = 0
         if security.is_reviewer(current_user()):
@@ -349,17 +370,48 @@ def dashboard():
             ).fetchone()[0]
     finally:
         connection.close()
-    return render_template(
-        "dashboard.html",
-        total=total,
-        high=counts.get("HIGH", 0),
-        medium=counts.get("MEDIUM", 0),
-        low=counts.get("LOW", 0),
-        open_cases=open_cases,
-        loss=loss,
-        recent=recent,
-        categories=categories,
-    )
+    return {
+        "total": total,
+        "high": counts.get("HIGH", 0),
+        "medium": counts.get("MEDIUM", 0),
+        "low": counts.get("LOW", 0),
+        "open_cases": open_cases,
+        "loss": loss,
+        "recent": recent,
+        "categories": categories,
+        "province_counts": provinces,
+        "updated_at": datetime.now().isoformat(timespec="seconds"),
+    }
+
+
+@app.route("/dashboard")
+@unlocked_required
+def dashboard():
+    return render_template("dashboard.html", **dashboard_data())
+
+
+@app.get("/dashboard/live")
+@unlocked_required
+def dashboard_live():
+    data = dashboard_data()
+    data["categories"] = [dict(item) for item in data["categories"]]
+    data["province_counts"] = [dict(item) for item in data["province_counts"]]
+    data["recent"] = [
+        {
+            "id": report["id"],
+            "url": url_for("report_detail", report_id=report["id"]),
+            "created_at": date_short(report["created_at"]),
+            "province": report["province"] or "Unknown",
+            "platform": report["platform"],
+            "scam_type": report["scam_type"] or "Unclassified",
+            "risk_level": report["risk_level"] or "LOW",
+            "status": report["status"],
+        }
+        for report in data["recent"]
+    ]
+    response = jsonify(data)
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 @app.route("/reports")
@@ -377,9 +429,12 @@ def reports():
         values.append(risk)
     search = request.args.get("q", "").strip()
     if search:
-        searchable_fields = ["platform LIKE ?", "product LIKE ?", "scam_type LIKE ?"]
+        searchable_fields = [
+            "platform LIKE ?", "product LIKE ?", "scam_type LIKE ?",
+            "province LIKE ?",
+        ]
         if security.is_reviewer(current_user()):
-            searchable_fields.append("contact LIKE ?")
+            searchable_fields.extend(("contact LIKE ?", "suspect_ip LIKE ?"))
         clauses.append("(" + " OR ".join(searchable_fields) + ")")
         values.extend([f"%{search}%"] * len(searchable_fields))
     where = " WHERE " + " AND ".join(clauses) if clauses else ""
@@ -392,7 +447,8 @@ def reports():
         page_count = max(1, (total + page_size - 1) // page_size)
         page = min(page, page_count)
         rows = connection.execute("""
-            SELECT id, victim_name, platform, business_name, contact, product,
+            SELECT id, victim_name, platform, business_name, contact, suspect_ip,
+                province, product,
                 description, amount_lost, risk_level, status, created_at,
                 scam_type, created_by
             FROM reports
@@ -415,6 +471,8 @@ def new_report():
         platform = request.form.get("platform", "").strip()
         business = request.form.get("business_name", "").strip()
         contact = request.form.get("contact", "").strip()
+        suspect_ip = request.form.get("suspect_ip", "").strip()
+        province = request.form.get("province", "").strip()
         product = request.form.get("product", "").strip()
         description = request.form.get("description", "").strip()
         evidence = request.form.get("evidence", "").strip()
@@ -428,16 +486,27 @@ def new_report():
         if not platform or not description:
             flash("Incident location and incident description are required.", "error")
             return render_template("report_form.html", form=request.form)
+        if province not in REPORT_PROVINCES:
+            flash("Choose a province, Outside South Africa, or Unknown.", "error")
+            return render_template("report_form.html", form=request.form)
         if (
             len(victim) > 250
             or len(platform) > 250
             or len(business) > 250
             or len(contact) > 500
+            or len(suspect_ip) > 45
             or len(product) > 250
             or len(description) > 10000
         ):
             flash("One or more report fields exceed their allowed length.", "error")
             return render_template("report_form.html", form=request.form)
+
+        if suspect_ip:
+            try:
+                suspect_ip = str(ipaddress.ip_address(suspect_ip))
+            except ValueError:
+                flash("Enter a valid IPv4 or IPv6 address found in the evidence.", "error")
+                return render_template("report_form.html", form=request.form)
 
         banking = "banking_involved" in request.form
         compromised = "account_compromised" in request.form
@@ -445,9 +514,13 @@ def new_report():
         scam_type = classify_scam(description, platform)
         connection = connect_database()
         try:
-            repeated = bool(contact and connection.execute(
+            repeated_contact = bool(contact and connection.execute(
                 "SELECT 1 FROM reports WHERE contact = ? LIMIT 1", (contact,)
             ).fetchone())
+            repeated_ip = bool(suspect_ip and connection.execute(
+                "SELECT 1 FROM reports WHERE suspect_ip = ? LIMIT 1", (suspect_ip,)
+            ).fetchone())
+            repeated = repeated_contact or repeated_ip
             risk_level = calculate_risk(
                 amount, repeated, banking, compromised, exposed,
                 any(word in description.casefold() for word in ("link", "url", "click"))
@@ -458,12 +531,13 @@ def new_report():
                     victim_name, platform, business_name, contact, product,
                     description, amount_lost, risk_level, status, created_at,
                     scam_type, banking_involved, account_compromised,
-                    personal_info_exposed, created_by
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'SUBMITTED', ?, ?, ?, ?, ?, ?)
+                    personal_info_exposed, created_by, suspect_ip, province
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'SUBMITTED', ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 victim, platform, business, contact, product, description,
                 amount, risk_level, created_at, scam_type, int(banking),
-                int(compromised), int(exposed), current_user()["username"]
+                int(compromised), int(exposed), current_user()["username"],
+                suspect_ip, province
             ))
             report_id = cursor.lastrowid
             case_cursor = connection.execute("""
@@ -477,10 +551,16 @@ def new_report():
             ))
             case_id = case_cursor.lastrowid
             if contact:
+                indicator_type = classify_indicator(contact)
                 connection.execute("""
                     INSERT INTO indicators (case_id, indicator_type, indicator_value)
-                    VALUES (?, 'contact or URL', ?)
-                """, (case_id, contact))
+                    VALUES (?, ?, ?)
+                """, (case_id, indicator_type, contact))
+            if suspect_ip:
+                connection.execute("""
+                    INSERT INTO indicators (case_id, indicator_type, indicator_value)
+                    VALUES (?, 'IP address', ?)
+                """, (case_id, suspect_ip))
             if evidence:
                 connection.execute("""
                     INSERT INTO evidence (case_id, evidence_type, description)
@@ -490,13 +570,20 @@ def new_report():
                 INSERT INTO access_log (username, action, case_id, log_time)
                 VALUES (?, 'CASE CREATED', ?, ?)
             """, (current_user()["username"], case_id, created_at))
-            if repeated:
+            if repeated_contact:
                 connection.execute("""
                     INSERT INTO contact_alert_reviews (contact, decision)
                     VALUES (?, 'PENDING')
                     ON CONFLICT(contact) DO UPDATE SET
                         decision = 'PENDING', reviewer = NULL, reviewed_at = NULL
                 """, (contact,))
+            if repeated_ip:
+                connection.execute("""
+                    INSERT INTO ip_alert_reviews (ip_address, decision)
+                    VALUES (?, 'PENDING')
+                    ON CONFLICT(ip_address) DO UPDATE SET
+                        decision = 'PENDING', reviewer = NULL, reviewed_at = NULL
+                """, (suspect_ip,))
             connection.commit()
         finally:
             connection.close()
@@ -504,7 +591,7 @@ def new_report():
             DATABASE, current_user()["username"], "CASE CREATED",
             f"Report ID {report_id}; category {scam_type}; risk {risk_level}"
         )
-        if contact:
+        if contact or suspect_ip:
             security.audit_event(
                 DATABASE, current_user()["username"], "INDICATOR ADDED",
                 f"Case {case_id}"
@@ -536,7 +623,7 @@ def report_detail(report_id):
             connection.close()
             abort(400, "Choose a valid case status.")
         row = connection.execute(
-            "SELECT contact FROM reports WHERE id = ?", (report_id,)
+            "SELECT contact, suspect_ip FROM reports WHERE id = ?", (report_id,)
         ).fetchone()
         if not row:
             connection.close()
@@ -553,6 +640,21 @@ def report_detail(report_id):
                 connection.close()
                 flash("Confirm the repeated-contact alert before changing this case status.", "error")
                 return redirect(url_for("alerts"))
+        if row["suspect_ip"]:
+            repeated_ip_count = connection.execute(
+                "SELECT COUNT(*) FROM reports WHERE suspect_ip = ?",
+                (row["suspect_ip"],)
+            ).fetchone()[0]
+            ip_review = connection.execute(
+                "SELECT decision FROM ip_alert_reviews WHERE ip_address = ?",
+                (row["suspect_ip"],)
+            ).fetchone()
+            if repeated_ip_count > 1 and (
+                not ip_review or ip_review["decision"] != "CONFIRMED"
+            ):
+                connection.close()
+                flash("Confirm the repeated-IP alert before changing this case status.", "error")
+                return redirect(url_for("alerts"))
         connection.execute("UPDATE reports SET status = ? WHERE id = ?", (status, report_id))
         connection.execute(
             "UPDATE cases SET status = ? WHERE report_id = ?", (status, report_id)
@@ -567,7 +669,8 @@ def report_detail(report_id):
         return redirect(url_for("report_detail", report_id=report_id))
 
     report = connection.execute("""
-        SELECT id, victim_name, platform, business_name, contact, product,
+        SELECT id, victim_name, platform, business_name, contact, suspect_ip,
+            province, product,
             description, amount_lost, risk_level, status, created_at,
             scam_type, created_by, banking_involved, account_compromised,
             personal_info_exposed
@@ -612,8 +715,23 @@ def alerts():
         GROUP BY reports.contact HAVING COUNT(*) > 1
         ORDER BY total DESC
     """).fetchall()
+    alerts = [
+        {**dict(row), "indicator_type": classify_indicator(row["contact"])}
+        for row in rows
+    ]
+    ip_alerts = connection.execute("""
+        SELECT reports.suspect_ip AS ip_address, COUNT(*) AS total,
+            COALESCE(ip_alert_reviews.decision, 'PENDING') AS decision,
+            ip_alert_reviews.reviewer, MAX(reports.created_at) AS latest
+        FROM reports
+        LEFT JOIN ip_alert_reviews
+            ON ip_alert_reviews.ip_address = reports.suspect_ip
+        WHERE reports.suspect_ip != ''
+        GROUP BY reports.suspect_ip
+        ORDER BY total DESC, reports.suspect_ip
+    """).fetchall()
     connection.close()
-    return render_template("alerts.html", alerts=rows)
+    return render_template("alerts.html", alerts=alerts, ip_alerts=ip_alerts)
 
 
 @app.post("/alerts/review")
@@ -646,6 +764,44 @@ def review_alert():
         f"Repeated-contact alert {decision.lower()}"
     )
     flash("Repeated-contact alert review saved.", "success")
+    return redirect(url_for("alerts"))
+
+
+@app.post("/alerts/review-ip")
+@reviewer_required
+def review_ip_alert():
+    ip_address = request.form.get("ip_address", "").strip()
+    decision = request.form.get("decision", "")
+    if decision not in ("CONFIRMED", "DISMISSED"):
+        abort(400, "Invalid IP indicator review.")
+    try:
+        ip_address = str(ipaddress.ip_address(ip_address))
+    except ValueError:
+        abort(400, "Invalid IP indicator.")
+
+    connection = connect_database()
+    matching = connection.execute(
+        "SELECT COUNT(*) FROM reports WHERE suspect_ip = ?", (ip_address,)
+    ).fetchone()[0]
+    if not matching:
+        connection.close()
+        abort(400, "This reported IP indicator no longer exists.")
+    connection.execute("""
+        INSERT INTO ip_alert_reviews (ip_address, decision, reviewer, reviewed_at)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(ip_address) DO UPDATE SET decision = excluded.decision,
+            reviewer = excluded.reviewer, reviewed_at = excluded.reviewed_at
+    """, (
+        ip_address, decision, current_user()["username"],
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    ))
+    connection.commit()
+    connection.close()
+    security.audit_event(
+        DATABASE, current_user()["username"], "IP INDICATOR REVIEWED",
+        f"Reported IP indicator {decision.lower()}"
+    )
+    flash("Reported IP indicator review saved.", "success")
     return redirect(url_for("alerts"))
 
 

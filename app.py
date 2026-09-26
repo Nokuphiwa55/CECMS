@@ -34,13 +34,24 @@ def create_database():
             banking_involved INTEGER NOT NULL DEFAULT 0,
             account_compromised INTEGER NOT NULL DEFAULT 0,
             personal_info_exposed INTEGER NOT NULL DEFAULT 0,
-            created_by TEXT NOT NULL DEFAULT 'legacy'
+            created_by TEXT NOT NULL DEFAULT 'legacy',
+            suspect_ip TEXT NOT NULL DEFAULT '',
+            province TEXT NOT NULL DEFAULT ''
         )
     """)
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS contact_alert_reviews (
             contact TEXT PRIMARY KEY,
+            decision TEXT NOT NULL DEFAULT 'PENDING',
+            reviewer TEXT,
+            reviewed_at TEXT
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS ip_alert_reviews (
+            ip_address TEXT PRIMARY KEY,
             decision TEXT NOT NULL DEFAULT 'PENDING',
             reviewer TEXT,
             reviewed_at TEXT
@@ -79,7 +90,9 @@ def create_database():
         "banking_involved",
         "account_compromised",
         "personal_info_exposed",
-        "created_by"
+        "created_by",
+        "suspect_ip",
+        "province"
     ):
 
         if column not in columns:
@@ -88,6 +101,8 @@ def create_database():
                 "TEXT NOT NULL DEFAULT 'legacy'" if column == "created_by"
                 else "INTEGER NOT NULL DEFAULT 0"
             )
+            if column in ("suspect_ip", "province"):
+                definition = "TEXT NOT NULL DEFAULT ''"
             cursor.execute(
                 f"ALTER TABLE reports ADD COLUMN {column} {definition}"
             )

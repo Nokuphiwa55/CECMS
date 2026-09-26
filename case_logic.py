@@ -1,3 +1,42 @@
+import ipaddress
+import re
+from urllib.parse import urlsplit
+
+
+EMAIL_PATTERN = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
+PHONE_PATTERN = re.compile(r"\+?[0-9().\s-]+")
+
+
+def classify_indicator(value):
+    value = value.strip()
+    if not value:
+        return "Other indicator"
+
+    try:
+        ipaddress.ip_address(value)
+        return "IP address"
+    except ValueError:
+        pass
+
+    if EMAIL_PATTERN.fullmatch(value):
+        return "Email address"
+
+    if PHONE_PATTERN.fullmatch(value) and sum(character.isdigit() for character in value) >= 7:
+        return "Phone number"
+
+    if value.casefold().startswith(("http://", "https://", "www.")):
+        return "Website or URL"
+
+    try:
+        parsed = urlsplit(f"//{value}")
+    except ValueError:
+        parsed = None
+    if parsed and parsed.hostname and "." in parsed.hostname:
+        return "Website or URL"
+
+    return "Other indicator"
+
+
 SCAM_RULES = (
     ("Malware or malicious software", (
         "malware", "ransomware", "spyware", "virus", "remote access",

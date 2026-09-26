@@ -42,7 +42,7 @@
           <label for="username">Username</label>
           <input id="username" name="username" type="text" value="{{ username or '' }}" autocomplete="username" required autofocus>
           <label for="password">Password</label>
-          <input id="password" name="password" type="password" autocomplete="current-password" required>
+          <div class="password-input"><input id="password" name="password" type="password" autocomplete="current-password" required><button class="password-toggle" type="button" data-password-toggle aria-label="Show password" title="Show password" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.2 12s3.5-6 9.8-6 9.8 6 9.8 6-3.5 6-9.8 6-9.8-6-9.8-6Z"/><circle cx="12" cy="12" r="2.7"/><path class="eye-slash" d="m3 3 18 18"/></svg></button></div>
           <label for="verification_code">Authenticator code <span class="optional-label">6 digits</span></label>
           <input id="verification_code" name="verification_code" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" placeholder="{{ 'Enter the current code from your app' if enrollment_secret or mfa_challenge_required else 'Leave blank only when first setting up MFA' }}">
           <button class="button button-primary button-full" type="submit">Continue securely <span>→</span></button>
@@ -52,5 +52,6 @@
       <div class="auth-legal">Access is monitored and recorded for security purposes. <a href="{{ url_for('privacy') }}">Privacy &amp; access</a></div>
     </section>
   </main>
+  <script src="{{ url_for('static', filename='password_toggle.js') }}" defer></script>
 </body>
 </html>
